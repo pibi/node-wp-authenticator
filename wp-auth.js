@@ -364,8 +364,8 @@ function Valid_Auth(data, auth) {
 		var hmac2 = crypto.createHmac('sha256', hkey);
 		hmac2.update(user_login + '|' + expiration + '|' + token);
 		var cookieHash = hmac2.digest('hex');
-		self.debug && console.log('++++++++++++++++++++++++++ hash from wp config::: ' , cookieHash)
-		self.debug && console.log('++++++++++++++++++++++++++++ hash from cookies::: ', hash)
+		auth.debug && console.log('++++++++++++++++++++++++++ hash from wp config::: ' , cookieHash)
+		auth.debug && console.log('++++++++++++++++++++++++++++ hash from cookies::: ', hash)
 		if (hash == cookieHash) {
 			self.emit('auth', true, id);
 		} else {
