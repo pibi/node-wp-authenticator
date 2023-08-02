@@ -345,6 +345,7 @@ function Valid_Auth(data, auth) {
 		token = data[2],
 		hash = data[3];
 	// user_login = user_login.replace('%40', '@');
+	user_login = user_login.replaceAll('+', ' '); // restore space in username
 	user_login = decodeURIComponent(user_login);
 
 	if (
