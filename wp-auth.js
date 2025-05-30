@@ -96,12 +96,11 @@ WP_Auth.prototype.connectDB = function ( config ) {
 		this.debug && console.log('Error has occured in connection with SQL:: ', err);
 		setTimeout((err) => {
 			this.handleError(err);
-		}, this.retries * 10000, err)
+		}, this.retries * 1000, err)
 	});
 
 	// start pinging right now because it will ping first after 1 hour, so by then coneection should be established
 	this.startPinging();
-
 }
 
 WP_Auth.prototype.handleError = function (err) {
@@ -117,7 +116,7 @@ WP_Auth.prototype.handleError = function (err) {
 };
 
 WP_Auth.prototype.startPinging = function () {
-	// pinging every hour to keep connection alive
+	// pinging every minute to keep connection alive
 	clearInterval(this.pingInterval);
 	this.pingInterval =  setInterval(() => {
 		this.db.ping((err) => {
@@ -127,8 +126,8 @@ WP_Auth.prototype.startPinging = function () {
 				this.handleError(err)
 			}
 		})
-	}, 3600000);
-};
+	}, 60*1000);
+}
 
 WP_Auth.prototype.checkAuth = function (req) {
 	var self = this,
@@ -394,10 +393,14 @@ function Valid_Auth(data, auth) {
 		function (err, results) {
 			// console.log('Query results', results, err)
 			const data = (results && results[0]) || '';
-			if (err || !data) {
+			if (err) {
+				return self.emit('auth', false, 0, 'database error:' + err);
+			}
+			if (!data) { // user data error, cache it only for few seconds, to allow retries
 				auth.known_hashes[user_login] = { frag: '__fail__', id: 0 };
-				auth.known_hashes_timeout[user_login] = +new Date() + auth.timeout;
+				auth.known_hashes_timeout[user_login] = +new Date() + 1000*10;
 				// parse( auth.known_hashes[user_login].frag, auth.known_hashes[user_login].id );
+				return self.emit('auth', false, 0, 'unknown user');
 			} else {
 				auth.known_hashes[user_login] = {
 					frag: data.user_pass.substr(8, 4),
