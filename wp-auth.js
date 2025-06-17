@@ -376,10 +376,13 @@ function Valid_Auth(data, auth) {
 
 	if (user_login in auth.known_hashes) {
 		return process.nextTick(function () {
-			parse(
+			if (!parse(
 				auth.known_hashes[user_login].frag,
 				auth.known_hashes[user_login].id
-			);
+			)) {
+				// parse has invalidated the user, let's be sure we are not caching obsolete data (password changed)
+				auth.known_hashes_timeout[user_login] = +new Date() + 1000; // 1 sec cache only
+			}
 		});
 	}
 
@@ -398,21 +401,28 @@ function Valid_Auth(data, auth) {
 			}
 			if (!data) { // user data error, cache it only for few seconds, to allow retries
 				auth.known_hashes[user_login] = { frag: '__fail__', id: 0 };
-				auth.known_hashes_timeout[user_login] = +new Date() + 1000*10;
+				auth.known_hashes_timeout[user_login] = +new Date() + 1000; // 1 secs cache only
 				// parse( auth.known_hashes[user_login].frag, auth.known_hashes[user_login].id );
 				return self.emit('auth', false, 0, 'unknown user');
 			} else {
+				// should match the code from wp_includes/pluggable.php: wp_generate_auth_cookie
+				var new_frag = data.user_pass.startsWith('$P$') || data.user_pass.startsWith('$2y$') ? 
+					data.user_pass.substr(8, 4) :
+					data.user_pass.substr(-4);
 				auth.known_hashes[user_login] = {
-					frag: data.user_pass.substr(8, 4),
+					frag: new_frag,
 					id: data.ID,
 				};
 				auth.known_hashes_timeout[user_login] = +new Date() + auth.timeout;
 			}
 
-			parse(
+			if (!parse(
 				auth.known_hashes[user_login].frag,
 				auth.known_hashes[user_login].id
-			);
+			)) {
+				// parse has invalidated the user, let's be sure we are not caching obsolete data (password changed)
+				auth.known_hashes_timeout[user_login] = +new Date() + 1000; // 1 sec cache only
+			}
 		}
 	);
 }
